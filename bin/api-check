@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# API-CHEK 启动脚本（Linux / macOS）
+#
+# 用法:
+#   bin/api-check --help
+#   bin/api-check run -c apis.yaml
+#
+# 说明: 本脚本只负责「找到 jar + 用正确的编码启动 JVM」，不含任何业务逻辑。
+set -euo pipefail
+
+# 脚本位于 <root>/bin/ 下，向上退一级即项目根目录。
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname -- "$SCRIPT_DIR")"
+JAR="$ROOT_DIR/target/api-check.jar"
+
+if [ ! -f "$JAR" ]; then
+  echo "未找到 $JAR" >&2
+  echo "请先在项目根目录执行: ./mvnw package" >&2
+  exit 2
+fi
+
+# 优先使用 JAVA_HOME 下的 java：PATH 上的 java 可能是低版本，会报 UnsupportedClassVersionError。
+if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+  JAVA="$JAVA_HOME/bin/java"
+else
+  JAVA="java"
+fi
+
+# stdout/stderr 显式指定 UTF-8：报告含中文与 emoji，若沿用系统默认编码（Windows GBK、Linux C locale）
+# 会退化成 "?"。注意这要求终端本身按 UTF-8 解码，Windows 侧由 api-check.cmd 的 chcp 65001 保证。
+exec "$JAVA" \
+  -Dstdout.encoding=UTF-8 \
+  -Dstderr.encoding=UTF-8 \
+  -jar "$JAR" "$@"
