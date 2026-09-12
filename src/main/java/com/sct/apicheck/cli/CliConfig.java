@@ -56,11 +56,18 @@ public class CliConfig {
     }
 
     @Bean
-    public CommandLine commandLine(InitCommand initCommand, ValidateCommand validateCommand, RunCommand runCommand) {
+    public TraceCommand traceCommand() {
+        return new TraceCommand();
+    }
+
+    @Bean
+    public CommandLine commandLine(InitCommand initCommand, ValidateCommand validateCommand,
+                                   RunCommand runCommand, TraceCommand traceCommand) {
         CommandLine commandLine = new CommandLine(new ApiCheckCommand());
         commandLine.addSubcommand(initCommand);
         commandLine.addSubcommand(validateCommand);
         commandLine.addSubcommand(runCommand);
+        commandLine.addSubcommand(traceCommand);
         return commandLine;
     }
 }

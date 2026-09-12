@@ -11,6 +11,8 @@ import com.sct.apicheck.report.ReportWriter;
 import com.sct.apicheck.report.TerminalReporter;
 import com.sct.apicheck.run.InspectionRunner;
 import com.sct.apicheck.run.RunResult;
+import com.sct.apicheck.trace.TraceWriter;
+import com.sct.apicheck.trace.Tracer;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -59,21 +61,29 @@ public class RunCommand implements Callable<Integer> {
             return 2;
         }
 
+        Clock clock = Clock.systemUTC();
+        Tracer tracer = new Tracer(clock);
         InspectionRunner runner = new InspectionRunner(caller,
-                new AssertionEngine(config.getDefaults()), Clock.systemUTC());
+                new AssertionEngine(config.getDefaults()), tracer, clock);
         RunResult result = runner.run(config);
 
-        // {outputDir}/runs/{runId}/report.json
-        Path reportFile = outputDir.resolve("runs").resolve(result.getRunId()).resolve("report.json");
+        // {outputDir}/runs/{runId}/report.json + trace.jsonl
+        Path runDir = outputDir.resolve("runs").resolve(result.getRunId());
+        Path reportFile = runDir.resolve("report.json");
+        Path traceFile = runDir.resolve("trace.jsonl");
         try {
             new ReportWriter().write(result, reportFile);
+            new TraceWriter().write(tracer.spans(), traceFile);
         } catch (RuntimeException e) {
-            System.err.println("错误: 写入报告失败: " + e.getMessage());
+            System.err.println("错误: 写入产物失败: " + e.getMessage());
             return 1;
         }
 
         System.out.println(new TerminalReporter().render(result));
         System.out.println("报告已写入: " + reportFile);
+        System.out.println("链路已写入: " + traceFile);
+        // trace_id 与 run_id 不同名（trace_… / run_…），直接印出来省得用户拿 run_id 去 show。
+        System.out.println("trace_id: " + tracer.traceId());
         return result.getFailed() > 0 ? 1 : 0;
     }
 }
