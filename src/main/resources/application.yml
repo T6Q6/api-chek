@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: API-CHEK
+  main:
+    web-application-type: none   # CLI 模式，禁用内嵌 Web 服务器
+    banner-mode: off             # 关闭 Spring 启动横幅
