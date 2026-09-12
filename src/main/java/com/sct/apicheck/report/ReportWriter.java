@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 将 {@link RunResult} 落盘为 {@code report.json}（结构对齐 PRD §8.2）。
@@ -38,8 +40,8 @@ public class ReportWriter {
     private static ObjectNode toJson(RunResult result) {
         ObjectNode report = MAPPER.createObjectNode();
         report.put("run_id", result.getRunId());
-        report.put("start_time", DateTimeFormatter.ISO_INSTANT.format(result.getStartTime()));
-        report.put("end_time", DateTimeFormatter.ISO_INSTANT.format(result.getEndTime()));
+        report.put("start_time", formatTimestamp(result.getStartTime()));
+        report.put("end_time", formatTimestamp(result.getEndTime()));
         report.put("total", result.getTotal());
         report.put("passed", result.getPassed());
         report.put("failed", result.getFailed());
@@ -67,6 +69,15 @@ public class ReportWriter {
             messages.add(message);
         }
         return node;
+    }
+
+    /**
+     * 时间戳只保留到秒。{@code Clock.systemUTC().instant()} 带纳秒尾数，直接输出会得到
+     * {@code 2026-09-12T10:46:58.060276100Z} 这种噪声；截断（而非四舍五入）到秒即可，
+     * 精度损失无实际意义 —— 每个接口的耗时另有 {@code rt_ms} 记录。
+     */
+    private static String formatTimestamp(Instant instant) {
+        return DateTimeFormatter.ISO_INSTANT.format(instant.truncatedTo(ChronoUnit.SECONDS));
     }
 
     private static double roundToThreeDecimals(double value) {
